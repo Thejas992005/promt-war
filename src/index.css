@@ -11,13 +11,17 @@
 
 /* Custom styles for printing plans cleanly */
 @media print {
-  nav, .no-print {
+
+  nav,
+  .no-print {
     display: none !important;
   }
+
   body {
     background: white !important;
     color: black !important;
   }
+
   .print-page-break {
     page-break-after: always;
   }
@@ -25,8 +29,15 @@
 
 /* Animations */
 @keyframes pulse-subtle {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
 }
 
 .animate-pulse-subtle {

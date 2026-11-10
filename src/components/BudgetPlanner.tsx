@@ -597,3 +597,4 @@ export const BudgetPlanner: React.FC<BudgetPlannerProps> = ({ plan, onUpdatePlan
     </div>
   );
 };
+

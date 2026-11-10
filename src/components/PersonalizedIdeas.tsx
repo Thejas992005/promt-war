@@ -278,3 +278,4 @@ export const PersonalizedIdeas: React.FC<PersonalizedIdeasProps> = ({ plan, onUp
     </div>
   );
 };
+

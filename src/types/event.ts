@@ -112,3 +112,4 @@ export interface NaturalLanguagePromptInput {
   prompt: string;
   preferredCurrency?: Currency;
 }
+

@@ -532,3 +532,4 @@ export const VendorChecklist: React.FC<VendorChecklistProps> = ({ plan, onUpdate
     </div>
   );
 };
+

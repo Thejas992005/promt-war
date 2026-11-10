@@ -214,3 +214,4 @@ export const EventOverview: React.FC<EventOverviewProps> = ({ plan, onUpdatePlan
     </div>
   );
 };
+

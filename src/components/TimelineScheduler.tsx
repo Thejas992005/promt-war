@@ -544,3 +544,4 @@ export const TimelineScheduler: React.FC<TimelineSchedulerProps> = ({ plan, onUp
     </div>
   );
 };
+

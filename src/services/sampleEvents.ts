@@ -262,3 +262,4 @@ export const SAMPLE_EVENTS: EventPlan[] = [
     updatedAt: '2026-11-10T15:10:00Z'
   }
 ];
+

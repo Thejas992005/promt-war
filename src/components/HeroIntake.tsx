@@ -369,3 +369,4 @@ export const HeroIntake: React.FC<HeroIntakeProps> = ({ onGeneratePlan, isGenera
     </div>
   );
 };
+

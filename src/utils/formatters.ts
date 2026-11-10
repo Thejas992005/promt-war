@@ -97,3 +97,4 @@ export function calculateBudgetSummary(items: BudgetItem[], totalBudget: number)
     status
   };
 }
+

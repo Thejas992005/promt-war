@@ -35,3 +35,4 @@ describe('Budget Calculations & Currency Formatting', () => {
     expect(formatCurrency(3500, 'EUR')).toBe('€3,500');
   });
 });
+

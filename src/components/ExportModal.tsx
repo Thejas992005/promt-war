@@ -198,3 +198,4 @@ ${plan.personalizedIdeas.themeDescription}
 Generated with CelebrationAI (Google Developers Edition).
 `;
 }
+
