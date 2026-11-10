@@ -1,0 +1,534 @@
+import React, { useState } from 'react';
+import { Users, Phone, Mail, Globe, CheckCircle2, AlertTriangle, Plus, Edit2, Trash2, Check, X, ShieldCheck, Sparkles, Filter, ChevronRight } from 'lucide-react';
+import { Vendor, VendorStatus, EventPlan } from '../types/event';
+import { formatCurrency } from '../utils/formatters';
+
+interface VendorChecklistProps {
+  plan: EventPlan;
+  onUpdatePlan: (updated: EventPlan) => void;
+}
+
+export const VendorChecklist: React.FC<VendorChecklistProps> = ({ plan, onUpdatePlan }) => {
+  const [statusFilter, setStatusFilter] = useState<'all' | VendorStatus>('all');
+  const [showAddVendorModal, setShowAddVendorModal] = useState(false);
+
+  // Add vendor form state
+  const [vendorCategory, setVendorCategory] = useState('Catering');
+  const [vendorName, setVendorName] = useState('');
+  const [vendorContact, setVendorContact] = useState('');
+  const [vendorPhone, setVendorPhone] = useState('');
+  const [vendorEmail, setVendorEmail] = useState('');
+  const [vendorQuote, setVendorQuote] = useState(15000);
+  const [vendorStatus, setVendorStatus] = useState<VendorStatus>('pending');
+  const [vendorNotes, setVendorNotes] = useState('');
+  const [isVerified, setIsVerified] = useState(true);
+
+  // Edit vendor modal/inline state
+  const [editingVendorId, setEditingVendorId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<Partial<Vendor>>({});
+
+  const handleStatusChange = (vendorId: string, newStatus: VendorStatus) => {
+    const updated = plan.vendors.map(v => {
+      if (v.id === vendorId) {
+        return {
+          ...v,
+          status: newStatus,
+          // if confirmed, auto-mark actual quote equal to estimate if none exists
+          actualQuote: newStatus === 'confirmed' && !v.actualQuote ? v.estimatedQuote : v.actualQuote
+        };
+      }
+      return v;
+    });
+
+    onUpdatePlan({
+      ...plan,
+      vendors: updated,
+      updatedAt: new Date().toISOString()
+    });
+  };
+
+  const handleDeleteVendor = (vendorId: string) => {
+    onUpdatePlan({
+      ...plan,
+      vendors: plan.vendors.filter(v => v.id !== vendorId),
+      updatedAt: new Date().toISOString()
+    });
+  };
+
+  const handleStartEdit = (v: Vendor) => {
+    setEditingVendorId(v.id);
+    setEditForm({ ...v });
+  };
+
+  const handleSaveEdit = (vendorId: string) => {
+    const updated = plan.vendors.map(v => {
+      if (v.id === vendorId) {
+        return {
+          ...v,
+          ...editForm,
+          estimatedQuote: Number(editForm.estimatedQuote) || v.estimatedQuote,
+          actualQuote: editForm.actualQuote ? Number(editForm.actualQuote) : v.actualQuote
+        };
+      }
+      return v;
+    });
+
+    onUpdatePlan({
+      ...plan,
+      vendors: updated,
+      updatedAt: new Date().toISOString()
+    });
+
+    setEditingVendorId(null);
+  };
+
+  const handleAddVendor = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!vendorName.trim()) return;
+
+    const newVendor: Vendor = {
+      id: 'v-user-' + Date.now(),
+      category: vendorCategory.trim() || 'Vendor',
+      name: vendorName.trim(),
+      contactPerson: vendorContact.trim(),
+      phone: vendorPhone.trim(),
+      email: vendorEmail.trim(),
+      estimatedQuote: Number(vendorQuote) || 0,
+      actualQuote: vendorStatus === 'confirmed' ? Number(vendorQuote) : undefined,
+      status: vendorStatus,
+      isVerifiedUserVendor: isVerified,
+      notes: vendorNotes.trim()
+    };
+
+    onUpdatePlan({
+      ...plan,
+      vendors: [...plan.vendors, newVendor],
+      updatedAt: new Date().toISOString()
+    });
+
+    setShowAddVendorModal(false);
+    setVendorName('');
+    setVendorContact('');
+    setVendorPhone('');
+    setVendorEmail('');
+    setVendorNotes('');
+  };
+
+  const filteredVendors = plan.vendors.filter(v => {
+    if (statusFilter !== 'all' && v.status !== statusFilter) return false;
+    return true;
+  });
+
+  const statusColors: Record<VendorStatus, { bg: string; text: string; border: string }> = {
+    pending: { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-200' },
+    contacted: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
+    quoted: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
+    confirmed: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+    completed: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' }
+  };
+
+  const confirmedCount = plan.vendors.filter(v => v.status === 'confirmed' || v.status === 'completed').length;
+
+  return (
+    <div className="space-y-6">
+      {/* Notice Banner */}
+      <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 sm:p-4 flex items-start gap-3 text-blue-900 text-xs sm:text-sm">
+        <Sparkles className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+        <div>
+          <span className="font-bold">Vendor Directory & Integrity Notice:</span> Recommendations generated by AI are structural checklist placeholders. Verified entries that you add or verify appear with a{' '}
+          <span className="inline-flex items-center gap-1 font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded text-[11px] border border-emerald-300">
+            <ShieldCheck className="w-3 h-3" /> User Verified
+          </span>{' '}
+          badge to ensure no fictional contact data is mistaken for real service bookings.
+        </div>
+      </div>
+
+      {/* Filter and Stats Bar */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        {/* Status Filter Pills */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs font-semibold text-slate-500 mr-1 flex items-center gap-1">
+            <Filter className="w-3.5 h-3.5" /> Filter Status:
+          </span>
+          {(['all', 'pending', 'contacted', 'quoted', 'confirmed', 'completed'] as const).map(st => (
+            <button
+              key={st}
+              onClick={() => setStatusFilter(st)}
+              className={`text-xs px-2.5 py-1 rounded-lg font-medium capitalize transition-colors ${
+                statusFilter === st
+                  ? 'bg-brand-600 text-white shadow-xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              {st} {st !== 'all' && `(${plan.vendors.filter(v => v.status === st).length})`}
+            </button>
+          ))}
+        </div>
+
+        {/* Counter & Add CTA */}
+        <div className="flex items-center gap-3">
+          <div className="text-xs text-slate-500">
+            Confirmed:{' '}
+            <span className="font-bold text-emerald-600">
+              {confirmedCount} / {plan.vendors.length}
+            </span>
+          </div>
+          <button
+            onClick={() => setShowAddVendorModal(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add Custom Vendor
+          </button>
+        </div>
+      </div>
+
+      {/* Vendor Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {filteredVendors.map(vendor => {
+          const isEditing = editingVendorId === vendor.id;
+          const statusStyle = statusColors[vendor.status] || statusColors.pending;
+
+          return (
+            <div
+              key={vendor.id}
+              className={`bg-white rounded-2xl border transition-all p-5 shadow-xs flex flex-col justify-between ${
+                vendor.status === 'confirmed'
+                  ? 'border-emerald-200 bg-emerald-50/20'
+                  : 'border-slate-200'
+              }`}
+            >
+              <div>
+                {/* Header: Category + Badges */}
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-brand-700 bg-brand-50 px-2 py-0.5 rounded border border-brand-200">
+                    {vendor.category}
+                  </span>
+
+                  {vendor.isVerifiedUserVendor ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                      User Verified
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                      <Sparkles className="w-3 h-3 text-amber-500" />
+                      AI Suggestion
+                    </span>
+                  )}
+                </div>
+
+                {/* Vendor Name */}
+                {isEditing ? (
+                  <div className="space-y-2 mb-3">
+                    <input
+                      type="text"
+                      value={editForm.name}
+                      onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                      className="w-full text-sm font-bold border rounded p-1.5"
+                      placeholder="Vendor name"
+                    />
+                    <input
+                      type="text"
+                      value={editForm.contactPerson}
+                      onChange={(e) => setEditForm({ ...editForm, contactPerson: e.target.value })}
+                      className="w-full text-xs border rounded p-1"
+                      placeholder="Contact person"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <h4 className="text-base font-bold text-slate-900">{vendor.name}</h4>
+                    {vendor.contactPerson && (
+                      <div className="text-xs font-medium text-slate-500 mt-0.5">
+                        Contact: {vendor.contactPerson}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Contact Information */}
+                <div className="mt-3 space-y-1.5 text-xs text-slate-600">
+                  {isEditing ? (
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        value={editForm.phone}
+                        onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                        className="w-full text-xs border rounded p-1"
+                        placeholder="Phone number"
+                      />
+                      <input
+                        type="email"
+                        value={editForm.email}
+                        onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                        className="w-full text-xs border rounded p-1"
+                        placeholder="Email address"
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      {vendor.phone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <a href={`tel:${vendor.phone}`} className="hover:text-brand-600 font-mono">
+                            {vendor.phone}
+                          </a>
+                        </div>
+                      )}
+                      {vendor.email && (
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                          <a href={`mailto:${vendor.email}`} className="hover:text-brand-600 truncate">
+                            {vendor.email}
+                          </a>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Quotes Comparison */}
+                <div className="mt-4 p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-slate-500">Estimated Target Quote:</span>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        value={editForm.estimatedQuote}
+                        onChange={(e) => setEditForm({ ...editForm, estimatedQuote: Number(e.target.value) })}
+                        className="w-24 text-xs border rounded p-1 text-right"
+                      />
+                    ) : (
+                      <span className="font-semibold text-slate-800">
+                        {formatCurrency(vendor.estimatedQuote, plan.currency)}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs mt-1.5 pt-1.5 border-t border-slate-200/60">
+                    <span className="font-medium text-slate-700">Actual Confirmed Quote:</span>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        value={editForm.actualQuote || ''}
+                        onChange={(e) => setEditForm({ ...editForm, actualQuote: Number(e.target.value) })}
+                        placeholder="Quote"
+                        className="w-24 text-xs border rounded p-1 text-right"
+                      />
+                    ) : vendor.actualQuote ? (
+                      <span className="font-bold text-emerald-700">
+                        {formatCurrency(vendor.actualQuote, plan.currency)}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400 italic">Awaiting Quote</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Notes */}
+                {vendor.notes && !isEditing && (
+                  <p className="mt-3 text-xs text-slate-500 italic bg-amber-50/50 p-2 rounded-lg border border-amber-100">
+                    "{vendor.notes}"
+                  </p>
+                )}
+              </div>
+
+              {/* Card Footer: Status Selector & Actions */}
+              <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                {isEditing ? (
+                  <div className="flex items-center justify-end gap-2 w-full">
+                    <button
+                      onClick={() => handleSaveEdit(vendor.id)}
+                      className="px-3 py-1 bg-emerald-600 text-white rounded-lg text-xs font-semibold"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setEditingVendorId(null)}
+                      className="px-3 py-1 bg-slate-200 text-slate-700 rounded-lg text-xs"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] text-slate-500">Status:</span>
+                      <select
+                        value={vendor.status}
+                        onChange={(e) => handleStatusChange(vendor.id, e.target.value as VendorStatus)}
+                        className={`text-xs font-semibold px-2 py-1 rounded-lg border ${statusStyle.bg} ${statusStyle.text} ${statusStyle.border}`}
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="contacted">Contacted</option>
+                        <option value="quoted">Quoted</option>
+                        <option value="confirmed">Confirmed</option>
+                        <option value="completed">Completed</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleStartEdit(vendor)}
+                        className="p-1.5 text-slate-400 hover:text-brand-600 rounded-lg hover:bg-slate-100 transition-colors"
+                        title="Edit Vendor"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteVendor(vendor.id)}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100 transition-colors"
+                        title="Delete Vendor"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Add Vendor Modal */}
+      {showAddVendorModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95">
+            <h3 className="text-base font-bold text-slate-900 mb-1">Add Custom Vendor</h3>
+            <p className="text-xs text-slate-500 mb-4">Record contact details and quotations for real service providers</p>
+
+            <form onSubmit={handleAddVendor} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Category</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Catering, Floral"
+                    value={vendorCategory}
+                    onChange={(e) => setVendorCategory(e.target.value)}
+                    className="w-full text-xs border border-slate-200 rounded-lg p-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Status</label>
+                  <select
+                    value={vendorStatus}
+                    onChange={(e) => setVendorStatus(e.target.value as VendorStatus)}
+                    className="w-full text-xs border border-slate-200 rounded-lg p-2 bg-slate-50 font-medium"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="contacted">Contacted</option>
+                    <option value="quoted">Quoted</option>
+                    <option value="confirmed">Confirmed</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Vendor / Studio Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Royal Banquet Catering"
+                  value={vendorName}
+                  onChange={(e) => setVendorName(e.target.value)}
+                  className="w-full text-xs border border-slate-200 rounded-lg p-2"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Contact Person</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Chef Sanjeev"
+                    value={vendorContact}
+                    onChange={(e) => setVendorContact(e.target.value)}
+                    className="w-full text-xs border border-slate-200 rounded-lg p-2"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Target Quote ({plan.currency})</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1000"
+                    value={vendorQuote}
+                    onChange={(e) => setVendorQuote(Number(e.target.value))}
+                    className="w-full text-xs border border-slate-200 rounded-lg p-2"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Phone</label>
+                  <input
+                    type="tel"
+                    placeholder="e.g. +91 98000 12345"
+                    value={vendorPhone}
+                    onChange={(e) => setVendorPhone(e.target.value)}
+                    className="w-full text-xs border border-slate-200 rounded-lg p-2 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    placeholder="e.g. contact@vendor.com"
+                    value={vendorEmail}
+                    onChange={(e) => setVendorEmail(e.target.value)}
+                    className="w-full text-xs border border-slate-200 rounded-lg p-2"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Notes / Deliverables</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Includes welcome mocktails and chafing dishes"
+                  value={vendorNotes}
+                  onChange={(e) => setVendorNotes(e.target.value)}
+                  className="w-full text-xs border border-slate-200 rounded-lg p-2"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="v-ver-cb"
+                  checked={isVerified}
+                  onChange={(e) => setIsVerified(e.target.checked)}
+                  className="rounded text-brand-600 focus:ring-brand-500"
+                />
+                <label htmlFor="v-ver-cb" className="text-xs text-slate-700 font-medium">
+                  Mark as User Verified Vendor (real validated contact)
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAddVendorModal(false)}
+                  className="px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-100 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-1.5 text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white rounded-lg shadow-xs"
+                >
+                  Save Vendor
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
